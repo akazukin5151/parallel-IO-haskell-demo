@@ -4,8 +4,8 @@ import Control.Concurrent ( threadDelay )
 import GHC.Conc (getNumCapabilities)
 
 import Control.Monad.Par.IO ( runParIO, ParIO, IVar )
-import Control.Monad.Par.Class
-    ( ParFuture(get), ParIVar(put, new, fork) )
+-- NOTE: must be Control.Monad.Par.Class not Control.Monad.Par
+import Control.Monad.Par.Class ( get, put, new, fork )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 
 
