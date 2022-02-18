@@ -5,7 +5,7 @@ Concise sample (see `src/Main.hs` for comments and types):
 ```hs
 import Control.Monad.Par.IO ( runParIO, ParIO, IVar )
 -- NOTE: must be Control.Monad.Par.Class not Control.Monad.Par
-import Control.Monad.Par.Class ( get, put, new, fork )
+import Control.Monad.Par.Class ( get, put, new, fork, spawn )
 
 expensiveIOComputation :: Int -> IO Int
 expensiveIOComputation x = do
@@ -20,15 +20,9 @@ main = do
 
 parMain :: ParIO [Int]
 parMain = do
-  let computations = map expensiveIOComputation [1, 2, 3, 4]
-  runningComputations <- mapM runInFork computations
+  let liftedComputations = map (liftIO . expensiveIOComputation) [1, 2, 3, 4]
+  runningComputations <- mapM spawn liftedComputations
   mapM get runningComputations
-
-runInFork :: IO Int -> ParIO (IVar Int)
-runInFork f = do
-  v <- new
-  fork (liftIO f >>= put v)
-  pure v
 ```
 
 ## Dependencies
@@ -48,19 +42,17 @@ runInFork f = do
 
 ## Extra tips
 
-- `runInFork` here is monomorphic and specialized to `Int`s, but it can be generic:
+- [spawn](https://hackage.haskell.org/package/abstract-par-0.3.3/docs/Control-Monad-Par-Class.html#v:spawn) is generic:
 
 ```hs
-runInFork :: (ParIVar ivar m, MonadIO m, NFData a) => IO a -> m (ivar a)
-runInFork f = do
-  v <- new
-  fork (liftIO f >>= put v)
-  pure v
+spawn :: NFData a => m a -> m (future a)
+spawn p = do
+  r <- new
+  fork (p >>= put r)
+  pure r
 ```
 
 The most important requirement is that your "inner result data" (`a`) must be `NFData`, meaning it must be able to be evaluated to normal form (fully evaluated with no remaining constructors). Common data types are already `NFData`, see https://hackage.haskell.org/package/parallel-3.2.2.0/docs/Control-Parallel-Strategies.html#t:NFData
-
-`runInFork` had type `IO Int -> ParIO (IVar Int)`, but it can also be `IO String -> ParIO (IVar String)`, etc.
 
 - For custom newtypes that wrap `NFData` types, try:
 
